@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for
 from data import db_session
 from data.users import User
+from data.recipes import Recipes
 from forms.user import RegisterForm, LoginForm
 import logging
 from flask_login import LoginManager, login_required, login_user, logout_user
@@ -16,7 +17,9 @@ def home():
 
 @app.route('/recipes')
 def recipes():
-    return render_template('recipes.html', menuname="Рецепты")
+    db_sess = db_session.create_session()
+    recipes = db_sess.query(Recipes).all()
+    return render_template('recipes.html', menuname="Рецепты", recipes=recipes)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -65,6 +68,12 @@ def login():
 def logout():
     logout_user()
     return redirect("/")
+
+@app.route('/<id>')
+def view_recipe(id: int):
+    db_sess = db_session.create_session()
+    recipe = db_sess.query(Recipes).filter(Recipes.id == id).first()
+    return render_template('recipe.html', recipe=recipe)
 
 if __name__ == '__main__':
     db_session.global_init("db/users.db")
