@@ -2,9 +2,10 @@ from flask import Flask, render_template, request, redirect, url_for
 from data import db_session
 from data.users import User
 from data.recipes import Recipes
+from forms.recipe import RecipeForm
 from forms.user import RegisterForm, LoginForm
 import logging
-from flask_login import LoginManager, login_required, login_user, logout_user
+from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'markdaun'
@@ -18,8 +19,12 @@ def home():
 @app.route('/recipes')
 def recipes():
     db_sess = db_session.create_session()
+    my_recipes = []
+    if current_user.is_authenticated:
+        my_id = db_sess.query(User).filter(User.name == current_user.name).first()
+        my_recipes = db_sess.query(Recipes).filter(Recipes.user_id == my_id.id).all()
     recipes = db_sess.query(Recipes).all()
-    return render_template('recipes.html', menuname="Рецепты", recipes=recipes)
+    return render_template('recipes.html', menuname="Рецепты", recipes=recipes, my_recipes=my_recipes)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -73,7 +78,24 @@ def logout():
 def view_recipe(id: int):
     db_sess = db_session.create_session()
     recipe = db_sess.query(Recipes).filter(Recipes.id == id).first()
-    return render_template('recipe.html', recipe=recipe)
+    return render_template('recipe.html', recipe=recipe, menuname="Рецепт")
+
+@app.route('/create', methods=['GET', 'POST'])
+@login_required
+def create_recipe():
+    form = RecipeForm()
+    if form.validate_on_submit():
+        db_sess = db_session.create_session()
+        recipe = Recipes(
+            title=form.name.data,
+            description=form.description.data,
+            content=form.content.data,
+            user_id=db_sess.query(User).filter(User.id == current_user.id).first().id
+        )
+        db_sess.add(recipe)
+        db_sess.commit()
+        return redirect('/recipes')
+    return render_template('new_recipe.html', menuname="Новый рецепт", form=form)
 
 if __name__ == '__main__':
     db_session.global_init("db/users.db")
