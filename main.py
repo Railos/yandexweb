@@ -6,6 +6,7 @@ from forms.recipe import RecipeForm
 from forms.user import RegisterForm, LoginForm
 import logging
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
+import bleach
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'markdaun'
@@ -78,7 +79,12 @@ def logout():
 def view_recipe(id: int):
     db_sess = db_session.create_session()
     recipe = db_sess.query(Recipes).filter(Recipes.id == id).first()
-    return render_template('recipe.html', recipe=recipe, menuname="Рецепт")
+    clean_html = bleach.clean(
+        recipe.content,
+        tags=["div", "p", "a", "img", "h1", "h2", "h3", "h4", "h5", "h6"], # Разрешённые теги
+        attributes={"a": ["href"], "img": ["src"]} # Разрешённые атрибуты
+    )
+    return render_template("recipe.html", menuname="Рецепт", dynamic_html=clean_html, recipe=recipe)
 
 @app.route('/create', methods=['GET', 'POST'])
 @login_required
