@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for
-from data import db_session
+from data.db_session import init_db, db_session
 from data.users import User
 from data.recipes import Recipes
 from forms.recipe import RecipeForm
@@ -7,11 +7,17 @@ from forms.user import RegisterForm, LoginForm
 import logging
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 import bleach
+from sqlalchemy import func
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'markdaun'
 login_manager = LoginManager()
 login_manager.init_app(app)
+
+
+@app.teardown_appcontext
+def shutdown_session(exception=None):
+    db_session.remove()
 
 @app.route('/')
 def home():
@@ -19,13 +25,30 @@ def home():
 
 @app.route('/recipes')
 def recipes():
-    db_sess = db_session.create_session()
     my_recipes = []
     if current_user.is_authenticated:
-        my_id = db_sess.query(User).filter(User.name == current_user.name).first()
-        my_recipes = db_sess.query(Recipes).filter(Recipes.user_id == my_id.id).all()
-    recipes = db_sess.query(Recipes).all()
+        my_id = db_session.query(User).filter(User.name == current_user.name).first()
+        my_recipes = db_session.query(Recipes).filter(Recipes.user_id == my_id.id).all()
+    recipes = db_session.query(Recipes).all()
+    db_session.close()
     return render_template('recipes.html', menuname="Рецепты", recipes=recipes, my_recipes=my_recipes)
+
+@app.route('/search')
+def search():
+    query = request.args.get('query', '').strip()
+    print(query)
+
+    if not query:
+        return render_template("recipes.html", menuname="Рецепты", recipes=[], my_recipes=[])
+    
+    my_recipes = []
+    recipes = db_session.query(Recipes).filter(func.lower(Recipes.title).like(f"%{query.lower()}%"))
+    if current_user.is_authenticated:
+        my_id = db_session.query(User).filter(User.name == current_user.name).first()
+        my_recipes = recipes.filter(Recipes.user_id == my_id.id).all()
+
+    db_session.close()
+    return render_template("recipes.html", menuname="Рецепты", recipes=recipes.all(), my_recipes=my_recipes)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -35,8 +58,7 @@ def register():
             return render_template('register.html', title='Регистрация',
                                    form=form,
                                    message="Пароли не совпадают")
-        db_sess = db_session.create_session()
-        if db_sess.query(User).filter(User.email == form.email.data).first():
+        if db_session.query(User).filter(User.email == form.email.data).first():
             return render_template('register.html', title='Регистрация',
                                    form=form,
                                    message="Такой пользователь уже есть")
@@ -45,25 +67,27 @@ def register():
             email=form.email.data,
         )
         user.set_password(form.password.data)
-        db_sess.add(user)
-        db_sess.commit()
+        db_session.add(user)
+        db_session.commit()
+        db_session.close()
         return redirect('/login')
     return render_template('register.html', menuname="Регистрация", form=form)
 
 @login_manager.user_loader
 def load_user(user_id):
-    db_sess = db_session.create_session()
-    return db_sess.query(User).get(user_id)
+    z = db_session.query(User).get(user_id)
+    db_session.close()
+    return z
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     form = LoginForm()
     if form.validate_on_submit():
-        db_sess = db_session.create_session()
-        user = db_sess.query(User).filter(User.email == form.email.data).first()
+        user = db_session.query(User).filter(User.email == form.email.data).first()
         if user and user.check_password(form.password.data):
             login_user(user, remember=form.remember_me.data)
             return redirect("/")
+        db_session.close()
         return render_template('login.html',
                                message="Неправильный логин или пароль",
                                form=form, menuname="Вход")
@@ -77,13 +101,13 @@ def logout():
 
 @app.route('/<id>')
 def view_recipe(id: int):
-    db_sess = db_session.create_session()
-    recipe = db_sess.query(Recipes).filter(Recipes.id == id).first()
+    recipe = db_session.query(Recipes).filter(Recipes.id == id).first()
     clean_html = bleach.clean(
         recipe.content,
         tags=["div", "p", "a", "img", "h1", "h2", "h3", "h4", "h5", "h6"], # Разрешённые теги
         attributes={"a": ["href"], "img": ["src"]} # Разрешённые атрибуты
     )
+    db_session.close()
     return render_template("recipe.html", menuname="Рецепт", dynamic_html=clean_html, recipe=recipe)
 
 @app.route('/create', methods=['GET', 'POST'])
@@ -91,18 +115,18 @@ def view_recipe(id: int):
 def create_recipe():
     form = RecipeForm()
     if form.validate_on_submit():
-        db_sess = db_session.create_session()
         recipe = Recipes(
             title=form.name.data,
             description=form.description.data,
             content=form.content.data,
-            user_id=db_sess.query(User).filter(User.id == current_user.id).first().id
+            user_id=db_sessionion.query(User).filter(User.id == current_user.id).first().id
         )
-        db_sess.add(recipe)
-        db_sess.commit()
+        db_session.add(recipe)
+        db_session.commit()
+        db_session.close()
         return redirect('/recipes')
     return render_template('new_recipe.html', menuname="Новый рецепт", form=form)
 
 if __name__ == '__main__':
-    db_session.global_init("db/users.db")
-    app.run(debug=True, port=8000)
+    init_db()
+    app.run(debug=True, port=8000, threaded=True)

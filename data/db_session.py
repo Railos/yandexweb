@@ -1,30 +1,43 @@
-import sqlalchemy as sa
-import sqlalchemy.orm as orm
-from sqlalchemy.orm import Session
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.ext.declarative import declarative_base
+import os
 
-SqlAlchemyBase = orm.declarative_base()
+# Путь к базе данных (папка db/users.db)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "db", "users.db")
 
-__factory = None
+# Настройка подключения к SQLite
+SQLALCHEMY_DATABASE_URL = f"sqlite:///{DB_PATH}"
 
-def global_init(db_file):
-    global __factory
+# Создаём движок SQLAlchemy
+engine = create_engine(
+    SQLALCHEMY_DATABASE_URL,
+    connect_args={"check_same_thread": False},  # Для работы в многопоточном режиме
+    echo=True  # Логирование SQL-запросов (можно отключить в продакшене)
+)
 
-    if __factory:
-        return
+# Фабрика сессий
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
 
-    if not db_file or not db_file.strip():
-        raise Exception("Необходимо указать файл базы данных.")
+# Для работы в Flask (scoped_session)
+db_session = scoped_session(SessionLocal)
 
-    conn_str = f'sqlite:///{db_file.strip()}?check_same_thread=False'
-    print(f"Подключение к базе данных по адресу {conn_str}")
+# Базовый класс для моделей
+SqlAlchemyBase = declarative_base()
 
-    engine = sa.create_engine(conn_str, echo=False)
-    __factory = orm.sessionmaker(bind=engine)
+from . import all_models
 
-    from . import all_models
+def init_db():
+    SqlAlchemyBase.metadata.create_all(bind=engine)
 
-    SqlAlchemyBase.metadata.create_all(engine)
-
-def create_session() -> Session:
-    global __factory
-    return __factory()
+def get_db():
+    db = db_session()
+    try:
+        yield db
+    finally:
+        db.close()
