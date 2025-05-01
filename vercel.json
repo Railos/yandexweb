@@ -9,7 +9,7 @@
         "wsgi": {
           "app": "main:app"
         },
-        "includeFiles": "templates/**/*, data/**/*"
+        "includeFiles": "templates/**/*, data/**/*, db/**/*"
       }
     }
   ],
