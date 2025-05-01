@@ -10,6 +10,7 @@ import bleach
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'markdaun'
+db_session.global_init("db/users.db")
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -104,5 +105,4 @@ def create_recipe():
     return render_template('new_recipe.html', menuname="Новый рецепт", form=form)
 
 if __name__ == '__main__':
-    db_session.global_init("db/users.db")
     app.run()
