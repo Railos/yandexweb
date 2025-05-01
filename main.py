@@ -105,4 +105,4 @@ def create_recipe():
 
 if __name__ == '__main__':
     db_session.global_init("db/users.db")
-    app.run(debug=True, port=8000)
+    app.run()
