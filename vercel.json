@@ -7,20 +7,20 @@
       "config": {
         "runtime": "python3.9",
         "wsgi": {
-          "app": "main:app"  # Указываем Flask app
+          "app": "main:app"
         },
-        "includeFiles": "templates/**/*, static/**/*"  # Включаем шаблоны и статику
+        "includeFiles": "templates/**/*"
       }
     }
   ],
   "routes": [
     {
       "src": "/static/(.*)",
-      "dest": "/static/$1"  # Статика
+      "dest": "/static/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "main.py"      # Все запросы → Flask
+      "dest": "main.py"
     }
   ],
   "build": {
