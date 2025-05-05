@@ -7,11 +7,11 @@ from forms.user import RegisterForm, LoginForm
 import logging
 from flask_login import LoginManager, login_required, login_user, logout_user, current_user
 import bleach
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'markdaun'
-db_session.global_init("db/users.db")
+#db_session.global_init("db/users.db")
 login_manager = LoginManager()
 login_manager.init_app(app)
 
@@ -36,20 +36,24 @@ def recipes():
 
 @app.route('/search')
 def search():
-    query = request.args.get('query', '').strip()
-    print(query)
+    query = request.args.get('query', '').strip().lower()
 
     if not query:
         return render_template("recipes.html", menuname="Рецепты", recipes=[], my_recipes=[])
     
+    search_pattern = f"%{query}%"
+    results = db_session.query(Recipes).filter(
+        or_(
+            func.lower(Recipes.title).like(search_pattern),
+            func.lower(Recipes.description).like(search_pattern)
+        )
+    )
     my_recipes = []
-    recipes = db_session.query(Recipes).filter(func.lower(Recipes.title).like(f"%{query.lower()}%"))
     if current_user.is_authenticated:
-        my_id = db_session.query(User).filter(User.name == current_user.name).first()
-        my_recipes = recipes.filter(Recipes.user_id == my_id.id).all()
+        my_recipes = results.filter(Recipes.user_id == current_user.id).all()
 
     db_session.close()
-    return render_template("recipes.html", menuname="Рецепты", recipes=recipes.all(), my_recipes=my_recipes)
+    return render_template("recipes.html", menuname="Рецепты", recipes=results.all(), my_recipes=my_recipes)
 
 @app.route('/register', methods=['GET', 'POST'])
 def register():
@@ -102,8 +106,7 @@ def logout():
 
 @app.route('/<int:id>')
 def view_recipe(id: int):
-    db_sess = db_session.create_session()
-    recipe = db_sess.query(Recipes).filter(Recipes.id == id).first()
+    recipe = db_session.query(Recipes).filter(Recipes.id == id).first()
     return render_template("recipe.html", menuname="Рецепт", dynamic_html=recipe.content, recipe=recipe)
 
 @app.route('/create', methods=['GET', 'POST'])
@@ -115,7 +118,7 @@ def create_recipe():
             title=form.name.data,
             description=form.description.data,
             content=form.content.data,
-            user_id=db_sessionion.query(User).filter(User.id == current_user.id).first().id
+            user_id=db_session.query(User).filter(User.id == current_user.id).first().id
         )
         db_session.add(recipe)
         db_session.commit()
