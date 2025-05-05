@@ -1,0 +1,31 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "main.py",
+      "use": "@vercel/python",
+      "config": {
+        "runtime": "python3.9",
+        "wsgi": {
+          "app": "main:app"
+        },
+        "includeFiles": "templates/**/*, data/**/*, db/**/*"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "main.py"
+    }
+  ],
+  "build": {
+    "env": {
+      "PYTHON_VERSION": "3.9"
+    }
+  }
+}
