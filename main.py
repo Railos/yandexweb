@@ -76,16 +76,11 @@ def logout():
     logout_user()
     return redirect("/")
 
-@app.route('/<id>')
+@app.route('/<int:id>')
 def view_recipe(id: int):
     db_sess = db_session.create_session()
     recipe = db_sess.query(Recipes).filter(Recipes.id == id).first()
-    clean_html = bleach.clean(
-        recipe.content,
-        tags=["div", "p", "a", "img", "h1", "h2", "h3", "h4", "h5", "h6"], # Разрешённые теги
-        attributes={"a": ["href"], "img": ["src"]} # Разрешённые атрибуты
-    )
-    return render_template("recipe.html", menuname="Рецепт", dynamic_html=clean_html, recipe=recipe)
+    return render_template("recipe.html", menuname="Рецепт", dynamic_html=recipe.content, recipe=recipe)
 
 @app.route('/create', methods=['GET', 'POST'])
 @login_required
@@ -104,5 +99,6 @@ def create_recipe():
         return redirect('/recipes')
     return render_template('new_recipe.html', menuname="Новый рецепт", form=form)
 
+
 if __name__ == '__main__':
-    app.run()
+    app.run(port=8000, debug=True)

@@ -6,12 +6,11 @@
 <h2>МОИ РЕЦЕПТЫ</h2>
 <div style="display: flex; flex-wrap: wrap; gap: 20px; padding: 20px">
     {% for i in my_recipes %}
-        <div class="card" style="width: 18rem;">
-            <img src="..." class="card-img-top" alt="...">
+        <div class="card" style="width: 18rem; background-color: #FAFAEB">
             <div class="card-body">
                 <h5 class="card-title">{{ i.title }}</h5>
                 <p class="card-text">{{ i.description }}</p>
-                <a href="/{{i.id}}" class="btn btn-primary">СМОТРЕТЬ РЕЦЕПТ</a>
+                <a href="/{{i.id}}" class="btn btn-primary"><h6>СМОТРЕТЬ РЕЦЕПТ</h6></a>
             </div>
         </div>
     {% endfor %}
@@ -21,12 +20,11 @@
 
 <div style="display: flex; flex-wrap: wrap; gap: 20px; padding: 20px">
     {% for i in recipes %}
-        <div class="card" style="width: 18rem;">
-            <img src="..." class="card-img-top" alt="...">
+        <div class="card" style="width: 18rem; background-color: #FAFAEB">
             <div class="card-body">
                 <h5 class="card-title">{{ i.title }}</h5>
                 <p class="card-text">{{ i.description }}</p>
-                <a href="/{{i.id}}" class="btn btn-primary">СМОТРЕТЬ РЕЦЕПТ</a>
+                <a href="/{{i.id}}" class="btn btn-primary"><h6>СМОТРЕТЬ РЕЦЕПТ</h6></a>
             </div>
         </div>
     {% endfor %}
